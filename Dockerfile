@@ -3,7 +3,7 @@
 ###############################################################################
 # Builder — resolve dependencies from uv.lock, then install the project
 ###############################################################################
-FROM python:3.13-slim AS builder
+FROM python:3.15-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -31,7 +31,7 @@ RUN uv sync --frozen --no-dev --no-editable
 # Runtime — virtualenv + app assets only: no compilers, no package manager,
 # no root user.
 ###############################################################################
-FROM python:3.13-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
