@@ -273,15 +273,34 @@ trainer, evaluation and pusher outputs are kept separately so you can inspect or
 
 ## Docker
 
+The image is a **multi-stage build**: `python:3.13-slim` builder resolves `uv.lock` into a
+virtualenv, and the runtime stage ships only that virtualenv plus the app assets — no compilers,
+no package index, no root user.
+
 ```bash
 docker build -t usvisa .
+
 docker run -d --name usvisa -p 8080:8080 \
   -e MONGODB_URL="$MONGODB_URL" \
   -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" \
   -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
   -e MODEL_BUCKET_NAME="$MODEL_BUCKET_NAME" \
   usvisa
+
+docker ps --format 'table {{.Names}}\t{{.Status}}'   # healthcheck reports (healthy)
 ```
+
+Hardening baked into the image:
+
+| Property | Value |
+|---|---|
+| User | `appuser`, uid/gid `10001` (non-root, no shell) |
+| Healthcheck | HTTP `GET /` every 30 s, 20 s start period |
+| Writable paths | only `/app/logs` and `/app/artifact` (`US_VISA_LOG_DIR`) |
+| Dependencies | installed from `uv.lock`, byte-compiled, `--no-dev` |
+
+CI builds the image on every push, asserts it does not run as root, blocks on **Trivy**
+HIGH/CRITICAL findings (fixed ones) and publishes a **CycloneDX SBOM** artifact.
 
 ## CI/CD and AWS deployment
 
@@ -340,8 +359,8 @@ sequence.
 
 Highest-ROI items:
 
-- [ ] `pyproject.toml` + `uv.lock`, ruff/mypy/pytest with a CI coverage gate, Python 3.13 runtime
-- [ ] Multi-stage non-root image + Trivy/SBOM/cosign supply-chain checks
+- [x] `pyproject.toml` + `uv.lock`, ruff/mypy/pytest with a CI coverage gate (3.12/3.13 in CI)
+- [x] Multi-stage non-root image + Trivy scan + SBOM (cosign signing still open)
 - [ ] `/predict` + `/batch` + `/explain` JSON API with Pydantic v2 and a warm model in `lifespan`
 - [ ] MLflow 3.x registry with `champion`/`challenger` aliases instead of `model.pkl` on S3
 - [ ] Evidently 0.7.x drift monitoring on a schedule, with alerting

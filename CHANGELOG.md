@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.2.1] — 2026-11-11
+
+### Changed
+
+- **Container:** the `Dockerfile` is now a multi-stage build — a `python:3.13-slim` builder
+  resolves `uv.lock` into a virtualenv, and the runtime stage copies only that virtualenv plus the
+  app assets, running as non-root `appuser` (uid 10001) with a `HEALTHCHECK` against `/`.
+- Write access is limited to `/app/logs` and `/app/artifact`, and the image sets
+  `US_VISA_LOG_DIR` so the logger never writes inside `site-packages`.
+
+### Added
+
+- CI job that builds the image, asserts the container does not run as root, fails on Trivy
+  HIGH/CRITICAL (fixed) findings, and publishes a CycloneDX SBOM artifact.
+
 ## [Unreleased]
 
 Weekend roadmap items 3–5 from [`docs/ROADMAP_2026.md`](docs/ROADMAP_2026.md): Pydantic API,

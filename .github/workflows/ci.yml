@@ -116,3 +116,55 @@ jobs:
             exit 1
           fi
           echo "No hardcoded credentials found."
+
+  container:
+    name: Build image, scan with Trivy, emit SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          load: true
+          tags: us-visa:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Show image size
+        run: |
+          docker image inspect us-visa:ci --format 'image size: {{.Size}} bytes'
+
+      - name: Run the container as the non-root user
+        run: |
+          docker run --rm --entrypoint python us-visa:ci -c "import os, getpass; print('uid:', os.getuid(), 'user:', getpass.getuser()); assert os.getuid() != 0, 'container must not run as root'"
+
+      - name: Scan the image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: us-visa:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+
+      - name: Generate a CycloneDX SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: us-visa:ci
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - name: Upload the SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+          if-no-files-found: error
