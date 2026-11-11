@@ -1,29 +1,28 @@
-import os
 import sys
+from typing import Any
 
-import numpy as np
-import pandas as pd
+from pandas import DataFrame
+
 from us_visa.entity.config_entity import USvisaPredictorConfig
 from us_visa.entity.s3_estimator import USvisaEstimator
 from us_visa.exception import USvisaException
 from us_visa.logger import logging
-from us_visa.utils.main_utils import read_yaml_file
-from pandas import DataFrame
 
 
 class USvisaData:
-    def __init__(self,
-                continent,
-                education_of_employee,
-                has_job_experience,
-                requires_job_training,
-                no_of_employees,
-                region_of_employment,
-                prevailing_wage,
-                unit_of_wage,
-                full_time_position,
-                company_age
-                ):
+    def __init__(
+        self,
+        continent,
+        education_of_employee,
+        has_job_experience,
+        requires_job_training,
+        no_of_employees,
+        region_of_employment,
+        prevailing_wage,
+        unit_of_wage,
+        full_time_position,
+        company_age,
+    ):
         """
         Usvisa Data constructor
         Input: all features of the trained model for prediction
@@ -40,26 +39,23 @@ class USvisaData:
             self.full_time_position = full_time_position
             self.company_age = company_age
 
-
         except Exception as e:
             raise USvisaException(e, sys) from e
 
-    def get_usvisa_input_data_frame(self)-> DataFrame:
+    def get_usvisa_input_data_frame(self) -> DataFrame:
         """
         This function returns a DataFrame from USvisaData class input
         """
         try:
-            
             usvisa_input_dict = self.get_usvisa_data_as_dict()
             return DataFrame(usvisa_input_dict)
-        
+
         except Exception as e:
             raise USvisaException(e, sys) from e
 
-
     def get_usvisa_data_as_dict(self):
         """
-        This function returns a dictionary from USvisaData class input 
+        This function returns a dictionary from USvisaData class input
         """
         logging.info("Entered get_usvisa_data_as_dict method as USvisaData class")
 
@@ -86,8 +82,12 @@ class USvisaData:
         except Exception as e:
             raise USvisaException(e, sys) from e
 
+
 class USvisaClassifier:
-    def __init__(self,prediction_pipeline_config: USvisaPredictorConfig = USvisaPredictorConfig(),) -> None:
+    def __init__(
+        self,
+        prediction_pipeline_config: USvisaPredictorConfig = USvisaPredictorConfig(),
+    ) -> None:
         """
         :param prediction_pipeline_config: Configuration for prediction the value
         """
@@ -95,9 +95,9 @@ class USvisaClassifier:
             # self.schema_config = read_yaml_file(SCHEMA_FILE_PATH)
             self.prediction_pipeline_config = prediction_pipeline_config
         except Exception as e:
-            raise USvisaException(e, sys)
+            raise USvisaException(e, sys) from e
 
-    def predict(self, dataframe) -> str:
+    def predict(self, dataframe: DataFrame) -> Any:
         """
         This is the method of USvisaClassifier
         Returns: Prediction in string format
@@ -108,9 +108,9 @@ class USvisaClassifier:
                 bucket_name=self.prediction_pipeline_config.model_bucket_name,
                 model_path=self.prediction_pipeline_config.model_file_path,
             )
-            result =  model.predict(dataframe)
-            
+            result = model.predict(dataframe)
+
             return result
-        
+
         except Exception as e:
-            raise USvisaException(e, sys)
+            raise USvisaException(e, sys) from e

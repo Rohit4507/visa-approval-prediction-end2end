@@ -1,7 +1,9 @@
 # End-to-End US Visa Approval Prediction (MLOps)
 
 <p align="left">
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white">
+  <img alt="uv" src="https://img.shields.io/badge/managed%20with-uv-DE5FE9">
+  <a href="https://github.com/Rohit4507/visa-approval-prediction-end2end/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Rohit4507/visa-approval-prediction-end2end/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Web%20App-009688?logo=fastapi&logoColor=white">
   <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Atlas-47A248?logo=mongodb&logoColor=white">
   <img alt="AWS" src="https://img.shields.io/badge/AWS-S3%20%7C%20ECR%20%7C%20EC2-FF9900?logo=amazonaws&logoColor=white">
@@ -104,7 +106,7 @@ The per-stage flowcharts live in [`flowcharts/`](flowcharts) — one image per c
 | 4 | Model Trainer | `us_visa/components/model_trainer.py` | Runs `GridSearchCV` over the estimators declared in `config/model.yaml`, scores on the test set, keeps models above the expected score |
 | 5 | Model Evaluation | `us_visa/components/model_evaluation.py` | Compares the new model to the one in S3; only accepts it if the improvement clears `MODEL_EVALUATION_CHANGED_THRESHOLD_SCORE` |
 | 6 | Model Pusher | `us_visa/components/model_pusher.py` | Uploads the accepted model + preprocessing object to the S3 model registry |
-| 7 | Prediction Pipeline | `us_visa/pipline/prediction_pipeline.py` | Loads the production model from S3 and serves single-record predictions |
+| 7 | Prediction Pipeline | `us_visa/pipeline/prediction_pipeline.py` | Loads the production model from S3 and serves single-record predictions |
 
 ## Project structure
 
@@ -123,7 +125,7 @@ visa-approval-prediction-end2end/
 │   ├── entity/                   # config + artifact dataclasses, estimators
 │   ├── exception/                # custom USvisaException with traceback detail
 │   ├── logger/                   # timestamped file + console logging
-│   ├── pipline/                  # training and prediction pipelines
+│   ├── pipeline/                 # training and prediction pipelines
 │   └── utils/                    # YAML readers, model save/load, evaluation helpers
 ├── notebook/                     # EDA, feature engineering, drift, MongoDB demos
 ├── flowcharts/                   # component-level design diagrams
@@ -132,8 +134,10 @@ visa-approval-prediction-end2end/
 ├── demo.py                       # scratch file used while building components
 ├── ProjectFlow.txt               # step-by-step build log of the whole project
 ├── Dockerfile, .dockerignore
-├── .github/workflows/            # CI/CD (ECR push + EC2 deploy) and syntax CI
-├── requirements.txt, setup.py
+├── tests/                        # pytest suite (unit + component + smoke tests)
+├── .github/workflows/            # CI (lint, types, tests) and optional deploy
+├── pyproject.toml, uv.lock       # packaging, dependencies, ruff/mypy/pytest config
+├── .pre-commit-config.yaml
 └── LICENSE
 ```
 
@@ -147,7 +151,8 @@ visa-approval-prediction-end2end/
 | Serving | FastAPI, Uvicorn, Jinja2 |
 | Cloud | AWS S3 (model registry), ECR (images), EC2 (runtime), IAM |
 | DevOps | Docker, GitHub Actions, self-hosted runner |
-| Config & logging | PyYAML, `from_root`, custom logger/exception modules |
+| Config & logging | PyYAML, environment-driven settings, custom logger/exception modules |
+| Tooling | uv (lockfile), ruff, mypy, pytest + coverage, pre-commit, GitHub Actions |
 
 ## Dataset
 
@@ -178,16 +183,19 @@ pipeline itself reads from MongoDB Atlas.
 git clone https://github.com/Rohit4507/visa-approval-prediction-end2end.git
 cd visa-approval-prediction-end2end
 
-# 2. environment (Python 3.8+)
-conda create -n visa python=3.8 -y && conda activate visa
-pip install -r requirements.txt          # installs the local `us_visa` package too
+# 2. install (creates .venv from uv.lock — Python 3.11+)
+uv sync
 
 # 3. configure secrets (see next section)
 cp .env.example .env                     # then edit .env
+set -a && . ./.env && set +a             # export them for the current shell
 
 # 4. run the web app
-python app.py                            # http://localhost:8080
+uv run python app.py                     # http://localhost:8080
 ```
+
+No `uv` yet? `pip install uv` (or see the [uv install docs](https://docs.astral.sh/uv/)).
+Plain `pip` works too: `python -m venv .venv && .venv/bin/pip install -e .`.
 
 ## Environment variables
 
@@ -216,6 +224,27 @@ $env:AWS_SECRET_ACCESS_KEY="..."
 $env:MODEL_BUCKET_NAME="rohit-usvisa-model-registry"
 ```
 
+## Development
+
+Everything the CI enforces can be run locally in one line each:
+
+```bash
+uv run ruff check .            # lint
+uv run ruff format --check .   # formatting (drop --check to apply)
+uv run mypy                    # static types for the us_visa package
+uv run pytest --cov            # tests + coverage gate (currently 48%)
+```
+
+The test suite (40 tests) covers the utils, the model factory, the estimator wrapper, the
+Evidently drift port and the API surface; `tests/conftest.py` provides synthetic visa frames so
+no MongoDB or AWS access is needed.
+
+Optional but recommended:
+
+```bash
+uv run pre-commit install      # lint + type-check on every commit
+```
+
 ## Running the web app
 
 ```bash
@@ -236,7 +265,7 @@ python app.py
 curl http://localhost:8080/train
 
 # or straight from Python
-python -c "from us_visa.pipline.training_pipeline import TrainPipeline; TrainPipeline().run_pipeline()"
+python -c "from us_visa.pipeline.training_pipeline import TrainPipeline; TrainPipeline().run_pipeline()"
 ```
 
 Every run writes its artifacts to `artifact/<timestamp>/` — ingestion, validation, transformation,
@@ -318,7 +347,6 @@ Highest-ROI items:
 - [ ] Evidently 0.7.x drift monitoring on a schedule, with alerting
 - [ ] OpenTofu → ECS Fargate, GitHub OIDC (no static AWS keys), canary + auto-rollback
 - [ ] Model card, decision audit log, human-in-the-loop review and an EU AI Act Annex III §7 mapping
-- [ ] Rename `us_visa/pipline` → `us_visa/pipeline`
 
 ## Contributing
 
