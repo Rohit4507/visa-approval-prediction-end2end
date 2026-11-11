@@ -38,7 +38,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     US_VISA_LOG_DIR=/app/logs
 
-RUN groupadd --gid 10001 appgroup \
+# Pick up base-image security fixes that landed after the tag was published.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --no-cache-dir --upgrade pip setuptools \
+    && groupadd --gid 10001 appgroup \
     && useradd --uid 10001 --gid appgroup --create-home --shell /usr/sbin/nologin appuser
 
 WORKDIR /app

@@ -145,26 +145,31 @@ jobs:
         run: |
           docker run --rm --entrypoint python us-visa:ci -c "import os, getpass; print('uid:', os.getuid(), 'user:', getpass.getuser()); assert os.getuid() != 0, 'container must not run as root'"
 
-      - name: Scan the image with Trivy
+      - name: Scan the image with Trivy (gate on fixed HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: us-visa:ci
           format: table
+          output: trivy-report.txt
           exit-code: "1"
           ignore-unfixed: true
           severity: HIGH,CRITICAL
           vuln-type: os,library
 
-      - name: Generate a CycloneDX SBOM
+      - name: Repeat the scan without failing, for the report
+        if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: us-visa:ci
           format: cyclonedx
           output: sbom.cdx.json
 
-      - name: Upload the SBOM
+      - name: Upload the security reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-cyclonedx
-          path: sbom.cdx.json
-          if-no-files-found: error
+          name: security-reports
+          path: |
+            trivy-report.txt
+            sbom.cdx.json
+          if-no-files-found: warn
