@@ -279,11 +279,12 @@ S3/ECR access. The full console walkthrough — including security groups, port 
 registration — is in [`ProjectFlow.txt`](ProjectFlow.txt), and can be repeated for your own AWS
 account using the placeholders listed there.
 
-> **The deploy workflow ships disabled** so that pushes to `main` stay green until your AWS
-> account is wired up. When the five secrets above and the self-hosted runner exist, enable it in
-> **Actions → Deploy Application Docker Image to EC2 instance → Run workflow / Enable workflow**.
-> The lightweight `ci.yml` (syntax, config and secret checks) runs on every push and needs no
-> secrets at all.
+> **The deploy workflow is opt-in.** Both jobs are gated on a repository variable named
+> `DEPLOY_ENABLED`, so pushes to `main` stay green until your AWS account is wired up. When the
+> five secrets above exist and the self-hosted runner is online, create
+> **Settings → Secrets and variables → Actions → Variables → `DEPLOY_ENABLED = true`** and the
+> pipeline goes live. The lightweight `ci.yml` (syntax, config and secret checks) runs on every
+> push and needs no secrets at all.
 
 ## Notebooks
 
