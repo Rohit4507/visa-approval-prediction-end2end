@@ -51,7 +51,7 @@ jobs:
 
       - name: Upload coverage report
         if: matrix.python-version == '3.13'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: .coverage
@@ -223,7 +223,7 @@ jobs:
 
       - name: Upload the security reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: security-reports
           path: |
