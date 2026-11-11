@@ -42,7 +42,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update \
     && apt-get upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --no-cache-dir --upgrade pip setuptools \
+    && /usr/local/bin/python3.13 -m pip install --no-cache-dir --upgrade pip setuptools \
     && groupadd --gid 10001 appgroup \
     && useradd --uid 10001 --gid appgroup --create-home --shell /usr/sbin/nologin appuser
 
