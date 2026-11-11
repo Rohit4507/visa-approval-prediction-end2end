@@ -8,9 +8,14 @@ on:
 env:
   IMAGE_TAG: latest
 
+# This workflow needs AWS secrets and a self-hosted EC2 runner. It stays skipped
+# until you opt in by creating a repository variable named DEPLOY_ENABLED with
+# the value "true" (Settings -> Secrets and variables -> Actions -> Variables).
+
 jobs:
   Continuous-Integration:
     name: Build and push the image to Amazon ECR
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -39,6 +44,7 @@ jobs:
   Continuous-Deployment:
     name: Deploy on the EC2 self-hosted runner
     needs: Continuous-Integration
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: self-hosted
 
     steps:
