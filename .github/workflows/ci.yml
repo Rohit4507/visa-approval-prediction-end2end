@@ -24,6 +24,9 @@ jobs:
       - name: Byte-compile the package and app
         run: python -m compileall -q us_visa app.py template.py demo.py
 
+      - name: Install validation dependencies
+        run: python -m pip install --quiet pyyaml
+
       - name: Validate YAML configuration
         run: |
           python -c "
