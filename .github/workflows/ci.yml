@@ -116,3 +116,118 @@ jobs:
             exit 1
           fi
           echo "No hardcoded credentials found."
+
+
+  container:
+    name: Build image, smoke-test it, scan with Trivy, emit SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          load: true
+          tags: us-visa:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Show image size
+        run: |
+          docker image inspect us-visa:ci --format 'image size: {{.Size}} bytes'
+
+      - name: Assert the image does not run as root
+        run: |
+          docker run --rm --entrypoint python us-visa:ci -c "import os; print('uid:', os.getuid()); assert os.getuid() != 0, 'container must not run as root'"
+
+      - name: Smoke-test the container
+        run: |
+          docker run -d --name usvisa-ci -p 8080:8080 us-visa:ci
+          code=000
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/ || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "GET / -> $code"
+          echo "health: $(docker inspect --format '{{.State.Health.Status}}' usvisa-ci)"
+          if [ "$code" != "200" ]; then
+            docker inspect --format '{{.State.Status}} exit={{.State.ExitCode}}' usvisa-ci
+            docker logs usvisa-ci 2>&1 | tail -40 | while IFS= read -r line; do
+              echo "::error title=container log::$(printf '%s' "$line" | tr -d '\r' | cut -c1-200)"
+            done
+            docker rm -f usvisa-ci
+            exit 1
+          fi
+          docker rm -f usvisa-ci
+
+      - name: Scan the image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: us-visa:ci
+          format: json
+          output: trivy.json
+          exit-code: "0"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+
+      - name: Gate on fixable HIGH/CRITICAL findings
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          report = json.loads(pathlib.Path("trivy.json").read_text())
+          findings = []
+          for result in report.get("Results", []):
+              target = result.get("Target", "")
+              for vuln in result.get("Vulnerabilities") or []:
+                  findings.append(
+                      f"{vuln['VulnerabilityID']} {vuln['PkgName']} "
+                      f"{vuln.get('InstalledVersion')} -> {vuln.get('FixedVersion')} [{target}]"
+                  )
+
+          lines = ["| ID | Details |", "|---|---|"]
+          for finding in findings[:100]:
+              ident, details = finding.split(" ", 1)
+              print(f"::error title=Trivy {ident}::{finding}")
+              lines.append(f"| {ident} | {details} |")
+
+          pathlib.Path("trivy-summary.md").write_text(
+              "\n".join(lines) + f"\n\nTotal fixable HIGH/CRITICAL: {len(findings)}\n"
+          )
+          pathlib.Path("trivy-report.txt").write_text("\n".join(findings) + "\n")
+
+          if findings:
+              print(f"::error title=Trivy::{len(findings)} HIGH/CRITICAL findings with a fix available")
+              sys.exit(1)
+
+          print("No fixable HIGH/CRITICAL findings.")
+          PY
+
+      - name: Generate a CycloneDX SBOM
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: us-visa:ci
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - name: Upload the security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            trivy-report.txt
+            trivy-summary.md
+            sbom.cdx.json
+          if-no-files-found: warn
