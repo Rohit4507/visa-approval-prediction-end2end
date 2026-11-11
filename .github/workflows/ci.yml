@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "arena/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  syntax-and-config:
+    name: Syntax, imports and config check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Byte-compile the package and app
+        run: python -m compileall -q us_visa app.py template.py demo.py
+
+      - name: Validate YAML configuration
+        run: |
+          python -c "
+          import yaml, sys
+          for path in ('config/model.yaml', 'config/schema.yaml', '.github/workflows/aws.yaml'):
+              with open(path) as fh:
+                  yaml.safe_load(fh)
+              print(f'OK  {path}')
+          "
+
+      - name: Validate notebooks are well-formed JSON
+        run: |
+          python -c "
+          import json, glob, sys
+          bad = []
+          for path in glob.glob('notebook/*.ipynb'):
+              try:
+                  json.load(open(path, encoding='utf-8'))
+                  print(f'OK  {path}')
+              except Exception as exc:
+                  bad.append(f'{path}: {exc}')
+          print('\n'.join(bad))
+          sys.exit(1 if bad else 0)
+          "
+
+      - name: Check for accidentally committed credentials
+        run: |
+          if grep -rIn --exclude-dir=.git -E "(AKIA[0-9A-Z]{16}|mongodb\+srv://[^<][^:]*:[^<][^@]*@)" . ; then
+            echo "::error::A connection string or AWS access key looks hardcoded. Use environment variables."
+            exit 1
+          fi
+          echo "No hardcoded credentials found."
