@@ -302,18 +302,23 @@ endpoint — MongoDB Atlas setup, component-by-component build order, AWS IAM/S3
 configuration, self-hosted runner registration and GitHub secrets. It is the fastest way to
 understand *why* each file exists.
 
-## Roadmap
+## Roadmap 2026
 
-Planned improvements:
+The full modernisation plan lives in **[docs/ROADMAP_2026.md](docs/ROADMAP_2026.md)** — gap audit,
+target architecture, nine ordered upgrades (packaging/uv, containers, data contracts, orchestration,
+MLflow registry, model quality, serving, IaC + OIDC, observability, AI governance) and an 8-week
+sequence.
 
-- [ ] Pin dependency versions and add a `requirements-dev.txt`
-- [ ] Improve the Jinja2 form UI: input validation, loading states and a results panel
-- [ ] Add `pytest` unit tests for every component and wire them into CI
-- [ ] Track experiments with MLflow instead of only S3 artifacts
-- [ ] Serve the model with a proper `/predict` JSON API alongside the HTML form
-- [ ] Rebuild the image on `python:3.11-slim` and switch to `boto3` with IAM roles (no static keys)
-- [ ] Add scheduled drift monitoring instead of drift checks only at training time
-- [ ] Rename `us_visa/pipline` → `us_visa/pipeline` (typo carried over from the original layout)
+Highest-ROI items:
+
+- [ ] `pyproject.toml` + `uv.lock`, ruff/mypy/pytest with a CI coverage gate, Python 3.13 runtime
+- [ ] Multi-stage non-root image + Trivy/SBOM/cosign supply-chain checks
+- [ ] `/predict` + `/batch` + `/explain` JSON API with Pydantic v2 and a warm model in `lifespan`
+- [ ] MLflow 3.x registry with `champion`/`challenger` aliases instead of `model.pkl` on S3
+- [ ] Evidently 0.7.x drift monitoring on a schedule, with alerting
+- [ ] OpenTofu → ECS Fargate, GitHub OIDC (no static AWS keys), canary + auto-rollback
+- [ ] Model card, decision audit log, human-in-the-loop review and an EU AI Act Annex III §7 mapping
+- [ ] Rename `us_visa/pipline` → `us_visa/pipeline`
 
 ## Contributing
 
