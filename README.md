@@ -321,16 +321,6 @@ Issues and pull requests are welcome. Please branch from `main`, keep the compon
 (config → component → pipeline), and make sure `python -m compileall us_visa app.py` passes
 before opening a PR.
 
-## Credits
-
-This repository is developed and maintained by **Rohit Singh Rajput**, and is based on the
-excellent open-source MLOps reference project
-[`vikashishere/MLOps-AWS-CICD-US-Visa-Approval-Prediction`](https://github.com/vikashishere/MLOps-AWS-CICD-US-Visa-Approval-Prediction)
-by **Vikash Das**, which is the origin of the pipeline architecture and the original code base.
-The original MIT copyright notice is preserved in [`LICENSE`](LICENSE).
-
-Personal changes in this fork: project branding and metadata, environment-driven model bucket,
-scrubbed credentials in the notebooks, a syntax-check CI workflow, and a rewritten README. Further
 engineering improvements are tracked in the [roadmap](#roadmap).
 
 ## License
