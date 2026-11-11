@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import os
 import pickle
 import sys
 from io import StringIO
+from typing import TYPE_CHECKING
 
 from botocore.exceptions import ClientError
-from mypy_boto3_s3.service_resource import Bucket
 from pandas import DataFrame, read_csv
 
 from us_visa.configuration.aws_connection import S3Client
 from us_visa.exception import USvisaException
 from us_visa.logger import logging
+
+if TYPE_CHECKING:  # stub package is a dev-only dependency, never needed at runtime
+    from mypy_boto3_s3.service_resource import Bucket
 
 
 class SimpleStorageService:

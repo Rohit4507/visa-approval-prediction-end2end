@@ -4310,6 +4310,7 @@ notebooks = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "mypy" },
     { name = "mypy-boto3-s3" },
     { name = "pre-commit" },
@@ -4349,6 +4350,7 @@ provides-extras = ["notebooks"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "mypy-boto3-s3", specifier = ">=1.35" },
     { name = "pre-commit", specifier = ">=4.0" },

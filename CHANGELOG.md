@@ -4,6 +4,37 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.2.1] — 2026-11-11
+
+### Added
+
+- **Container smoke test in CI:** the image is built, started, and `GET /` must return 200; the
+  runtime stage is asserted to run as a non-root user.
+- **Supply-chain gates:** Trivy scan of the built image (fails on fixable HIGH/CRITICAL, annotates
+  every finding with CVE, package and fixed version) plus a CycloneDX SBOM published as an artifact.
+- `dependabot.yml` for uv, GitHub Actions and Docker updates.
+
+### Changed
+
+- `Dockerfile` is now a **multi-stage build**: a `python:3.13-slim` builder resolves `uv.lock` into a
+  virtualenv, and the runtime stage copies only that virtualenv plus the app assets, runs as
+  `appuser` (uid/gid 10001) with a `HEALTHCHECK` against `/`.
+- The runtime image drops `pip`, `setuptools`, `wheel` and `ensurepip` (nothing needs them, and
+  ensurepip's bundled wheel carried CVE-2025-47273) and applies `apt-get upgrade` for base-image
+  security fixes.
+- Write access is limited to `/app/logs` and `/app/artifact`; `US_VISA_LOG_DIR` keeps the logger
+  out of `site-packages`.
+
+### Fixed
+
+- **App could not run from a production install:** `us_visa/cloud_storage/aws_storage.py` imported
+  the `mypy_boto3_s3` *typing stub* at module scope, so any `--no-dev` install crashed with
+  `ModuleNotFoundError`. The import is now behind `TYPE_CHECKING`.
+- **`GET /` returned 500:** `app.py` still used Starlette's removed
+  `TemplateResponse(name, context)` signature; both call sites now use the keyword form
+  (`request=`, `name=`, `context=`). Both bugs were caught by the new container smoke test and are
+  now covered by rendering tests.
+
 ## [Unreleased]
 
 Weekend roadmap items 3–5 from [`docs/ROADMAP_2026.md`](docs/ROADMAP_2026.md): Pydantic API,

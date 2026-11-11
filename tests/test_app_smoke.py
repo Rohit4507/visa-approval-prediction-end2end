@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from fastapi.testclient import TestClient
+
 from app import app
+
+client = TestClient(app)
 
 
 def test_routes_are_registered() -> None:
@@ -28,3 +32,17 @@ def test_openapi_schema_builds() -> None:
 
     assert schema["info"]["title"]
     assert "/train" in schema["paths"]
+
+
+def test_root_renders_the_application_form() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "US Visa Prediction" in response.text
+    assert "Visa Prediction Status" in response.text
+
+
+def test_static_stylesheet_is_served() -> None:
+    response = client.get("/static/css/style.css")
+
+    assert response.status_code == 200
