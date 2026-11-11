@@ -145,16 +145,49 @@ jobs:
         run: |
           docker run --rm --entrypoint python us-visa:ci -c "import os, getpass; print('uid:', os.getuid(), 'user:', getpass.getuser()); assert os.getuid() != 0, 'container must not run as root'"
 
-      - name: Scan the image with Trivy (gate on fixed HIGH/CRITICAL)
+      - name: Scan the image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: us-visa:ci
-          format: table
-          output: trivy-report.txt
-          exit-code: "1"
+          format: json
+          output: trivy.json
+          exit-code: "0"
           ignore-unfixed: true
           severity: HIGH,CRITICAL
           vuln-type: os,library
+
+      - name: Gate on HIGH/CRITICAL findings
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          report = json.loads(pathlib.Path("trivy.json").read_text())
+          findings = []
+          for result in report.get("Results", []):
+              target = result.get("Target", "")
+              for vuln in result.get("Vulnerabilities") or []:
+                  findings.append(
+                      f"{vuln['VulnerabilityID']} {vuln['PkgName']} "
+                      f"{vuln.get('InstalledVersion')} -> {vuln.get('FixedVersion')} [{target}]"
+                  )
+
+          lines = ["| ID | Package | Installed | Fixed | Target |", "|---|---|---|---|---|"]
+          for finding in findings[:100]:
+              print(f"::error title=Trivy {finding.split()[0]}::{finding}")
+              lines.append("| " + " | ".join(finding.replace(" [", "| ").split()) + " |")
+
+          summary = pathlib.Path("trivy-summary.md")
+          summary.write_text("\n".join(lines) + f"\n\nTotal: {len(findings)}\n")
+          pathlib.Path("trivy-report.txt").write_text("\n".join(findings) + "\n")
+
+          if findings:
+              print(f"::error title=Trivy::{len(findings)} HIGH/CRITICAL findings with fixes available")
+              sys.exit(1)
+
+          print("No fixable HIGH/CRITICAL findings.")
+          PY
 
       - name: Repeat the scan without failing, for the report
         if: always()
@@ -171,5 +204,6 @@ jobs:
           name: security-reports
           path: |
             trivy-report.txt
+            trivy-summary.md
             sbom.cdx.json
           if-no-files-found: warn
