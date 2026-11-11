@@ -170,3 +170,14 @@ logs/
 notebook/catboost_info/
 us_visa.egg-info/
 *.pkl
+
+# uv / virtual environments
+.venv/
+uv.lock.bak
+
+# tool caches and coverage
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+.mypy_cache/

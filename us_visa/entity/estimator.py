@@ -1,4 +1,5 @@
 import sys
+from typing import Any
 
 from pandas import DataFrame
 from sklearn.pipeline import Pipeline
@@ -6,30 +7,30 @@ from sklearn.pipeline import Pipeline
 from us_visa.exception import USvisaException
 from us_visa.logger import logging
 
+
 class TargetValueMapping:
     def __init__(self):
-        self.Certified:int = 0
-        self.Denied:int = 1
+        self.Certified: int = 0
+        self.Denied: int = 1
+
     def _asdict(self):
         return self.__dict__
+
     def reverse_mapping(self):
         mapping_response = self._asdict()
-        return dict(zip(mapping_response.values(),mapping_response.keys()))
-    
-
-
+        return dict(zip(mapping_response.values(), mapping_response.keys(), strict=False))
 
 
 class USvisaModel:
-    def __init__(self, preprocessing_object: Pipeline, trained_model_object: object):
+    def __init__(self, preprocessing_object: Pipeline, trained_model_object: Any):
         """
         :param preprocessing_object: Input Object of preprocesser
-        :param trained_model_object: Input Object of trained model 
+        :param trained_model_object: Input Object of trained model
         """
         self.preprocessing_object = preprocessing_object
         self.trained_model_object = trained_model_object
 
-    def predict(self, dataframe: DataFrame) -> DataFrame:
+    def predict(self, dataframe: DataFrame) -> Any:
         """
         Function accepts raw inputs and then transformed raw input using preprocessing_object
         which guarantees that the inputs are in the same format as the training data
