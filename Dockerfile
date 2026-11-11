@@ -38,11 +38,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     US_VISA_LOG_DIR=/app/logs
 
-# Pick up base-image security fixes that landed after the tag was published.
+# Patch base-image packages, then strip the Python packaging toolchain: the app
+# runs from the pre-built virtualenv, so pip/setuptools/ensurepip are dead weight
+# — and ensurepip's bundled setuptools wheel is what kept the old, vulnerable copy
+# (CVE-2025-47273) in the image.
 RUN apt-get update \
     && apt-get upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
-    && /usr/local/bin/python3.13 -m pip install --no-cache-dir --upgrade pip setuptools \
+    && /usr/local/bin/python3.13 -m pip uninstall -y pip setuptools wheel \
+    && rm -rf /usr/local/lib/python3.13/ensurepip \
     && groupadd --gid 10001 appgroup \
     && useradd --uid 10001 --gid appgroup --create-home --shell /usr/sbin/nologin appuser
 

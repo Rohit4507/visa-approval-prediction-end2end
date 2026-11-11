@@ -145,6 +145,22 @@ jobs:
         run: |
           docker run --rm --entrypoint python us-visa:ci -c "import os, getpass; print('uid:', os.getuid(), 'user:', getpass.getuser()); assert os.getuid() != 0, 'container must not run as root'"
 
+      - name: Smoke-test the container
+        run: |
+          docker run -d --name usvisa-ci -p 8080:8080 us-visa:ci
+          code=000
+          for _ in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/ || true)
+            [ "$code" = "200" ] && break
+            sleep 2
+          done
+          echo "GET / -> $code"
+          echo "health: $(docker inspect --format '{{.State.Health.Status}}' usvisa-ci)"
+          echo "--- container logs ---"
+          docker logs usvisa-ci | tail -20
+          docker rm -f usvisa-ci
+          test "$code" = "200"
+
       - name: Scan the image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
